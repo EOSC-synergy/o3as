@@ -34,7 +34,7 @@ TCO3Return = 'tco3_return'
 
 # API configuration
 PTYPE = 'ptype'
-MODEL = 'model'
+MODELS = 'models'
 BEGIN = 'begin'
 END = 'end'
 MONTH = 'month'
@@ -63,20 +63,20 @@ class TestAPIMethods(unittest.TestCase):
         cfg.O3AS_TCO3_REF_YEAR = self.ref_year
         
     def test_api_info(self):
-        meta = self.client.get('/api/api-info')
+        meta = self.client.get('/api/v1/apiinfo')
         logger.debug(F"[API] meta = {meta.data}")
         logger.debug(F"[API] type(meta.data) = {type(meta.data)}")
         self.assertEqual(200, meta.status_code)
         #self.assertTrue(type(meta.data) is dict)
 
     def test_api_data(self):
-        ptypes = self.client.get('/api/data')
+        ptypes = self.client.get('/api/v1/data')
         self.assertEqual(200, ptypes.status_code)
 
     def test_api_data_tco3_zm(self):
         begin_year = self.ref_year
         end_year = begin_year + 20
-        request_j = { MODEL: self.model, 
+        request_j = { MODELS: self.model, 
                       BEGIN: str(begin_year), 
                       END:   str(end_year),
                       LAT_MIN: '-10',
@@ -86,7 +86,7 @@ class TestAPIMethods(unittest.TestCase):
         request_q = request_q[:-1] + ''
         logger.info(F"[API] plot_tco3: {request_q}")
         # WHY json=json.dumps(request_j) does NOT work?!?!?!
-        data = self.client.post('/api/data/tco3_zm',
+        data = self.client.post('/api/v1/data/tco3_zm',
                                 headers=self.headers,
                                 #json=json.dumps(request_j)
                                 query_string=request_q
@@ -96,39 +96,39 @@ class TestAPIMethods(unittest.TestCase):
         self.assertEqual(200, data.status_code)
 
     def test_api_models(self):
-        models = self.client.get('/api/models')
+        models = self.client.get('/api/v1/models')
         logger.debug(F"[API] models = {models.data}")
         logger.debug(F"[API] type(models.data) = {type(models.data)}")
         self.assertEqual(200, models.status_code)
         
-    def test_api_models_list(self):
-        request_j = { 'select': '' }
-        request_q = ''.join([key + "=" + val + "&" for key,val in request_j.items()])
-        request_q = request_q[:-1] + ''
-        api_method = os.path.join('/api/models/list', 'all')
-        models = self.client.post(api_method,
-                                  headers=self.headers,
-                                  query_string=request_q
-                                  )
-        logger.info(F"[API] models (list) = {models.data}")
-        self.assertEqual(200, models.status_code)
+    #def test_api_models_list(self):
+    #    request_j = { 'select': '' }
+    #    request_q = ''.join([key + "=" + val + "&" for key,val in request_j.items()])
+    #    request_q = request_q[:-1] + ''
+    #    api_method = os.path.join('/api/models/list', 'all')
+    #    models = self.client.post(api_method,
+    #                              headers=self.headers,
+    #                              query_string=request_q
+    #                              )
+    #    logger.info(F"[API] models (list) = {models.data}")
+    #    self.assertEqual(200, models.status_code)
 
     def test_api_model_info(self):
-        request_j = { MODEL: self.model }
-        m_path = os.path.join('/api/models/', self.model)
+        request_j = {'model': self.model }
+        m_path = os.path.join('/api/v1/models/', self.model)
         m_info = self.client.get(m_path, headers=self.headers)
         logger.debug(F"[API] m_info.data: {m_info.data}")
         logger.debug(F"[API] m_info.content_type: {m_info.content_type}")
         self.assertEqual(200, m_info.status_code)
 
     def test_api_plots(self):
-        models = self.client.get('/api/plots')
+        models = self.client.get('/api/v1/plots')
         self.assertEqual(200, models.status_code)
 
     def test_api_plots_tco3_zm(self):
         begin_year = self.ref_year
         end_year = begin_year + 20 # default boxcar is 10(years), range>boxcar
-        request_j = { MODEL: self.model, 
+        request_j = { MODELS: self.model, 
                       BEGIN: str(begin_year), 
                       END:   str(end_year),
                       LAT_MIN: '-10',
@@ -138,7 +138,7 @@ class TestAPIMethods(unittest.TestCase):
         request_q = request_q[:-1] + ''
         logger.info(F"[API] plot_tco3: {request_q}")
         # WHY json=json.dumps(request_j) does NOT work?!?!?!
-        plot = self.client.post('/api/plots/tco3_zm',
+        plot = self.client.post('/api/v1/plots/tco3_zm',
                                 headers=self.headers,
                                 #json=json.dumps(request_j)
                                 query_string=request_q
@@ -148,7 +148,7 @@ class TestAPIMethods(unittest.TestCase):
         self.assertEqual(200, plot.status_code)
 
     def test_api_plots_tco3_return(self):
-        request_j = { MODEL: self.model, 
+        request_j = { MODELS: self.model, 
                       LAT_MIN: '-10',
                       LAT_MAX: '10',
                       REF_MEAS: self.ref_meas,
@@ -158,7 +158,7 @@ class TestAPIMethods(unittest.TestCase):
         request_q = request_q[:-1] + ''
         logger.info(F"[API] plot_return: {request_q}")
         # WHY json=json.dumps(request_j) does NOT work?!?!?!
-        plot = self.client.post('/api/plots/tco3_return',
+        plot = self.client.post('/api/v1/plots/tco3_return',
                                 headers=self.headers,
                                #json=json.dumps(request_j)
                                 query_string=request_q

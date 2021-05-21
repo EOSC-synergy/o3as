@@ -38,7 +38,7 @@ TCO3Return = 'tco3_return'
 
 # API configuration
 PTYPE = 'ptype'
-MODEL = 'model'
+MODELS = 'models'
 BEGIN = 'begin'
 END = 'end'
 MONTH = 'month'
@@ -150,7 +150,7 @@ class TestPackageMethods(unittest.TestCase):
 
         self.kwargs = {
             PTYPE : ptype,
-            MODEL: [self.model],
+            MODELS: [self.model],
             BEGIN: begin_year,
             END  : end_year,
             MONTH: '',
@@ -217,14 +217,14 @@ class TestPackageMethods(unittest.TestCase):
         o3data = o3api.get_data_types()
         self.assertTrue(type(o3data) is list)
 
-    def test_list_models(self):
+    def test_models_list(self):
         """
         Test that list of models is list
         """
         kwargs = {}
         kwargs[PTYPE] = TCO3
-        kwargs['select'] = 'all'
-        o3list = o3api.list_models(**kwargs)
+        kwargs['select'] = ''
+        o3list = o3api.get_models_list(**kwargs)
         self.assertTrue(type(o3list) is list)
 
     def test_get_models_info_type(self):
@@ -240,7 +240,7 @@ class TestPackageMethods(unittest.TestCase):
         Test that model detail is dict
         """
         o3kwargs = {
-            MODEL: self.kwargs[MODEL][0]
+            'model': self.kwargs[MODELS][0]
         }
         o3model_detail = o3api.get_model_detail(**o3kwargs)
         self.assertTrue(type(o3model_detail) is dict)
@@ -249,7 +249,7 @@ class TestPackageMethods(unittest.TestCase):
         """
         Test that returned dataset values are the same as generated.
         """
-        model = self.kwargs[MODEL][0]
+        model = self.kwargs[MODELS][0]
         ds = self.data.get_dataset(model)
         self.assertEqual(ds, self.o3ds)
 
@@ -257,7 +257,7 @@ class TestPackageMethods(unittest.TestCase):
         """
         Test that the returned dataset type is correct, xarray.Dataset
         """
-        model = self.kwargs[MODEL][0]
+        model = self.kwargs[MODELS][0]
         ds = self.data.get_dataslice(model)
         self.assertTrue(type(ds) is xr.Dataset)
 
@@ -268,7 +268,7 @@ class TestPackageMethods(unittest.TestCase):
         lat_min = self.kwargs[LAT_MIN]
         lat_max = self.kwargs[LAT_MAX]
 
-        model = self.kwargs[MODEL][0]
+        model = self.kwargs[MODELS][0]
         ds = self.data.get_dataslice(model)
         
         lat_0 = np.amin(ds.coords[LAT].values[0]) # min latitude
@@ -280,7 +280,7 @@ class TestPackageMethods(unittest.TestCase):
         """
         Test that the returned data type is correct, pd.DataFrame
         """
-        model = self.kwargs[MODEL][0]
+        model = self.kwargs[MODELS][0]
         ds = self.data.get_raw_data_pd(model)
         self.assertTrue(type(ds) is pd.DataFrame)
 
@@ -288,7 +288,7 @@ class TestPackageMethods(unittest.TestCase):
         """
         Test that the returned data type is correct, pd.DataFrame
         """
-        models = self.kwargs[MODEL]
+        models = self.kwargs[MODELS]
         ds = self.data.get_raw_ensemble_pd(models)
         self.assertTrue(type(ds) is pd.DataFrame)
 
