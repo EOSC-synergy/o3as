@@ -10,7 +10,7 @@ import logging
 import os
 
 # logging level accross various scripts
-log_level = logging.INFO #INFO # DEBUG # WARNING
+log_level = logging.DEBUG #INFO # DEBUG # WARNING
  
 # identify basedir for the package
 O3API_BASE_DIR = os.path.dirname(os.path.normpath(os.path.dirname(__file__)))

@@ -45,10 +45,10 @@ parameters:
       type: array
       items:
         type: string
-      default:
-        - CCMI-1_ACCESS_ACCESS-CCM-refC2
-        - CCMI-1_CCCma_CMAM-refC2
-        - CCMI-1_CHASER-MIROC-ESM-refC2
+      #default:
+      #  - CCMI-1_ACCESS_ACCESS-CCM-refC2
+      #  - CCMI-1_CCCma_CMAM-refC2
+      #  - CCMI-1_CHASER-MIROC-ESM-refC2
   YearBeginParam:
     name: begin
     in: query
@@ -346,6 +346,8 @@ paths:
         - application/json
       parameters:
         - $ref: '#/parameters/ModelsParamReq'
+        #- $ref: '#/parameters/YearBeginParam'
+        #- $ref: '#/parameters/YearEndParam'
         - $ref: '#/parameters/MonthParam'
         - $ref: '#/parameters/LatMinParam'
         - $ref: '#/parameters/LatMaxParam'

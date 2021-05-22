@@ -52,7 +52,7 @@ class TestPackageMethods(unittest.TestCase):
 
     def setUp(self):
 
-        self.model = 'test-o3api'
+        self.models = ['test-o3api', 'test-o3api-2', 'test-o3api-3']
         self.ref_meas = 'test-ref-model'
         self.ref_year = 1980
         # Check package meta info
@@ -93,15 +93,15 @@ class TestPackageMethods(unittest.TestCase):
         cfg.O3AS_TCO3_REF_YEAR = self.ref_year
 
         # metadata
-        self.metayaml = {TCO3: {'plot': { 'color': 'black',
-                                'marker': 'o',
-                                'style': 'solid' }},
-                         TCO3Return: {'plot': { 'color': 'black',
-                                'marker': 'o',
-                                'style': 'solid' }},
-                         VMRO3: {'plot': { 'color': 'black',
-                                'marker': 'o',
-                                'style': 'solid' }}
+        self.metayaml = {TCO3: {'plotstyle': { 'color': 'black',
+                                               'marker': 'o',
+                                               'linestyle': 'solid' }},
+                         TCO3Return: {'plotstyle': { 'color': 'black',
+                                                     'marker': 'o',
+                                                     'linestyle': 'solid' }},
+                         VMRO3: {'plotstyle': { 'color': 'black',
+                                                'marker': 'o',
+                                                'linestyle': 'solid' }}
                         }
 
         ### dummy reference dataset, monthly data
@@ -122,35 +122,46 @@ class TestPackageMethods(unittest.TestCase):
 
         with open(os.path.join(ref_dir, 'metadata.yaml'), 'w') as file:
             yaml.dump(self.metayaml, file, default_flow_style=False)
+            
+        ### function to emulate monthly data with noise:
+        def __tco3_one(months):
+            noise = np.random.normal(0, .125, months)
+            x = np.arange(months)
+            y = 0.25*(np.cos(2 * np.pi * x / months) + noise) + 0.4
+            return y
 
         ### tco3 dataset, monthly data
-        self.o3ds = xr.Dataset(
-            {TCO3: ((LAT, TIME), np.ones((19, 12*delta_years))),
-            },
-            coords={
-                    LAT : [x for x in range(-90, 100, 10)],
-                    TIME: [ self.start_date + np.timedelta64(x, 'M') 
-                              for x in range(0, 12*delta_years, 1)]
-                   }
-        )
+        for m in self.models:
+            tco3 = np.zeros((19, delta_years*12))
+            for l in range(0,19):
+                tco3[l, :] = __tco3_one(delta_years*12)
+            self.o3ds = xr.Dataset(
+                {TCO3: ((LAT, TIME), tco3) },
+                coords={
+                        LAT : [x for x in range(-90, 100, 10)],
+                        TIME: [ self.start_date + np.timedelta64(x, 'M') 
+                                  for x in range(0, 12*delta_years, 1)]
+                       }
+            )
 
-        end_year = self.end_date.astype('datetime64[Y]').astype(int) + 1970
-        begin_year = self.start_date.astype('datetime64[Y]').astype(int) + 1970
-        test_dir = os.path.join(data_base_path, self.model)
-        test_path  = os.path.join(test_dir, ptype + "-test-" + 
-                                            str(end_year) + ".nc")
-        os.makedirs(test_dir, exist_ok=True)
-        self.o3ds.to_netcdf(test_path)
-        self.o3ds.close()
+            end_year = self.end_date.astype('datetime64[Y]').astype(int) + 1970
+            begin_year = self.start_date.astype('datetime64[Y]').astype(int) + 1970
+
+            test_dir = os.path.join(data_base_path, m)
+            test_path  = os.path.join(test_dir, ptype + "-test-" + 
+                                      str(end_year) + ".nc")
+            os.makedirs(test_dir, exist_ok=True)
+            self.o3ds.to_netcdf(test_path)
+            self.o3ds.close()
         
-        with open(os.path.join(test_dir, 'metadata.yaml'), 'w') as file:
-            yaml.dump(self.metayaml, file)
+            with open(os.path.join(test_dir, 'metadata.yaml'), 'w') as file:
+                yaml.dump(self.metayaml, file)
 
         #time.sleep(1) # wait untin file is written?
 
         self.kwargs = {
             PTYPE : ptype,
-            MODELS: [self.model],
+            MODELS: self.models,
             BEGIN: begin_year,
             END  : end_year,
             MONTH: '',

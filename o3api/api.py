@@ -205,6 +205,7 @@ def __return_json(df, model, pfmt):
     :param pfmt: plot format (e.g. linecolor, marker)
     :return: JSON with points (x,y)
     """
+    logger.debug(F"plotstyle: {pfmt}")
     data = {'model': model,
             'x': df[model].dropna().index.tolist(),
             'y': df[model].dropna().values.tolist(), #curve[model]
@@ -460,7 +461,7 @@ def get_plot_style(*args, **kwargs):
     else:
         models = [ m['model'] for m in models_info ]
     
-    # if "models = []", i.e. is empty, get all available models instead
+    # if "models = []", i.e. empty list, get all available models instead
     if len(models) < 1:
         models = [ m['model'] for m in models_info ]
 
@@ -575,14 +576,17 @@ def plot_tco3_zm(*args, **kwargs):
     logger.info(
        "[TIME] Time to prepare data for plotting: {}".format(time.time() -
                                                              time_start))
-    response = plot(plot_data, ckwargs, **kwargs)
+    if request.headers['Accept'] == "application/pdf":
+        response = plot(plot_data, ckwargs, **kwargs)
+    else:
+        response = plot_json(plot_data, ckwargs, **kwargs)
 
     logger.info(
        "[TIME] Total time from getting the request: {}".format(time.time() -
                                                                time_start))
     return response
 
-@_catch_error
+#@_catch_error
 def plot_tco3_return(*args, **kwargs):
     """Plot tco3_return
 
@@ -622,21 +626,27 @@ def plot_tco3_return(*args, **kwargs):
     data = o3plots.ProcessForTCO3Return(**kwargs)
     plot_data = plot_data.append(data.get_ensemble_for_plot(kwargs[MODELS]))
 
-    cols = plot_data.columns
-    mmmean_yerr = [ 0., 0.]
-    if 'MMMean-Std' in cols and 'MMMean+Std' in cols:
-        mmmean_yerr[0] = (plot_data['MMMean'] - plot_data['MMMean+Std'])
-        mmmean_yerr[1] = (plot_data['MMMean-Std'] - plot_data['MMMean'])
-
     # define plot styling for the mean
     models_style = get_plot_style(**kwargs)
     models_stats_style = [ { 'model': 'MMMean',
                              TCO3Return: { PLOT_ST: {'marker': '^',
                                                      'color': 'red',
                                                      'markersize': 14,
-                                                     'mfc': 'none',
-                                                     'capsize': 6,
-                                                     'yerr': mmmean_yerr} 
+                                                     'mfc': 'none'} 
+                                         }
+                           },
+                           { 'model': 'MMMean-Std',
+                             TCO3Return: { PLOT_ST: {'marker': '_',
+                                                     'color': 'red',
+                                                     'markersize': 10,
+                                                     'mfc': 'none'} 
+                                         }
+                           },
+                           { 'model': 'MMMean+Std',
+                             TCO3Return: { PLOT_ST: {'marker': '_',
+                                                     'color': 'red',
+                                                     'markersize': 10,
+                                                     'mfc': 'none'} 
                                          }
                            },
                            { 'model': 'MMMedian',
@@ -655,7 +665,19 @@ def plot_tco3_return(*args, **kwargs):
     for model in ckwargs.keys():
         ckwargs[model]['linestyle'] = 'none'
 
-    response = plot(plot_data, ckwargs, **kwargs)
+    if request.headers['Accept'] == "application/pdf":
+        # update MMMean plotstyle to plot with error bars
+        cols = plot_data.columns
+        mmmean_yerr = [ 0., 0.]
+        if 'MMMean-Std' in cols and 'MMMean+Std' in cols:
+            mmmean_yerr[0] = (plot_data['MMMean'] - plot_data['MMMean+Std'])
+            mmmean_yerr[1] = (plot_data['MMMean-Std'] - plot_data['MMMean'])
+
+        ckwargs['MMMean']['capsize'] = 6
+        ckwargs['MMMean']['yerr'] = mmmean_yerr
+        response = plot(plot_data, ckwargs, **kwargs)
+    else:
+        response = plot_json(plot_data, ckwargs, **kwargs)
 
     logger.info(
        "[TIME] Total time from getting the request: {}".format(time.time() -
@@ -685,7 +707,7 @@ def plot(data, ckwargs, **kwargs):
     :param data: data to plot
     :param ckwargs: dictionary for curve plotting (e.g. color, style)
     :param kwargs: provided in the API call parameters
-    :return: Either PDF plot or JSON document
+    :return: PDF plot
     """
     plot_type = kwargs[PTYPE]
     # update the list of models as columns from pd.DataFrame
@@ -705,38 +727,54 @@ def plot(data, ckwargs, **kwargs):
         if model != 'MMMean-Std' and model != 'MMMean+Std':
             df[model].plot(**ckwargs[model]) #.dropna()
   
-    if request.headers['Accept'] == "application/pdf":
-        figure_file = phlp.set_filename(**kwargs) + ".pdf"
-        fig = plt.figure(num=None, figsize=(plot_c[plot_type]['fig_size']), 
-                         dpi=150, facecolor='w',
-                         edgecolor='k')
 
-        [ __return_plot(data, m) for m in models ]
+    figure_file = phlp.set_filename(**kwargs) + ".pdf"
+    fig = plt.figure(num=None, figsize=(plot_c[plot_type]['fig_size']), 
+                     dpi=150, facecolor='w',
+                     edgecolor='k')
+
+    [ __return_plot(data, m) for m in models ]
         
-        if plot_type == TCO3:        
-            if 'MMMean-Std' in models and 'MMMean+Std' in models:
-                plt.fill_between(data.index, 
-                                 data['MMMean-Std'],
-                                 data['MMMean+Std'],
-                                 color='green', alpha=0.2)
+    if plot_type == TCO3:        
+        if 'MMMean-Std' in models and 'MMMean+Std' in models:
+            plt.fill_between(data.index, 
+                             data['MMMean-Std'],
+                             data['MMMean+Std'],
+                             color='green', alpha=0.2)
 
-        phlp.set_figure_attr(fig, **kwargs)
+    phlp.set_figure_attr(fig, **kwargs)
 
-        buffer_plot = BytesIO()  # store in IO buffer, not a file
-        plt.savefig(buffer_plot, format='pdf', bbox_inches='tight')
-        plt.close(fig)
-        buffer_plot.seek(0)
+    buffer_plot = BytesIO()  # store in IO buffer, not a file
+    plt.savefig(buffer_plot, format='pdf', bbox_inches='tight')
+    plt.close(fig)
+    buffer_plot.seek(0)
 
-        response = send_file(buffer_plot,
-                             as_attachment=True,
-                             attachment_filename=figure_file,
-                             mimetype='application/pdf')
-    else:
-        json_output = []
-        __json_append = json_output.append
-        print("[PFMT]: ", ckwargs)
-        [ __json_append(__return_json(data, m, ckwargs[m])) for m in models ]
-        
-        response = json_output
+    response = send_file(buffer_plot,
+                         as_attachment=True,
+                         attachment_filename=figure_file,
+                         mimetype='application/pdf')
 
     return response
+
+def plot_json(data, ckwargs, **kwargs):
+    """Plotting routine returning JSON points
+
+    :param data: data ready for plotting
+    :param ckwargs: dictionary for curve plotting (e.g. color, style)
+    :param kwargs: provided in the API call parameters
+    :return: JSON document with data points and styles for plotting
+    """
+    plot_type = kwargs[PTYPE]
+    # update the list of models as columns from pd.DataFrame
+    # as additional columns can be added, e.g. 'reference_year', 'mean' etc
+    models = data.columns
+
+    logger.debug(F"headers: {dict(request.headers)}")
+    logger.debug(F"kwargs: {kwargs}")
+
+    models = data.columns
+    json_output = []
+    __json_append = json_output.append
+    [ __json_append(__return_json(data, m, ckwargs[m])) for m in models ]
+        
+    return json_output  
